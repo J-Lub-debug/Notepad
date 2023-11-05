@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:notepad/screens/Note.dart';
+import 'dart:async';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 
 class ListOfNotes extends StatefulWidget {
   const ListOfNotes({super.key});
@@ -9,11 +12,11 @@ class ListOfNotes extends StatefulWidget {
 }
 
 class _MyWidgetState extends State<ListOfNotes> {
-  var noteTitle = <String>['Note 1', 'Note 2'];
-  var noteContent = <String>['Text 1', 'Text 2'];
+  var noteTitle = [];
+  var noteContent = [];
 
-  late var originalNoteTitle = List<String>.from(noteTitle);
-  late var originalNoteContent = List<String>.from(noteContent);
+  late var originalNoteTitle = [];
+  late var originalNoteContent = [];
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +54,57 @@ class _MyWidgetState extends State<ListOfNotes> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    retrieveNotes();
+  }
+
+  Future<void> retrieveNotes() async {
+    var tempNoteTitleWait = [];
+    var tempNoteContentWait = [];
+
+    final database = openDatabase(
+      // Set the path to the database. Note: Using the `join` function from the
+      // `path` package is best practice to ensure the path is correctly
+      // constructed for each platform.
+      join(await getDatabasesPath(), 'notes.db'),
+      // When the database is first created, create a table to store notes.
+      onCreate: (db, version) {
+        // Run the CREATE TABLE statement on the database.
+        return db.execute(
+          'CREATE TABLE Notes(title TEXT PRIMARY KEY, subtitle TEXT)',
+        );
+      },
+      // Set the version. This executes the onCreate function and provides a
+      // path to perform database upgrades and downgrades.
+      version: 1,
+    );
+
+    final List<Map<String, dynamic>> result = await notesRetrieve(database);
+
+    for (final row in result) {
+      tempNoteTitleWait.add(row['title']);
+      tempNoteContentWait.add(row['subtitle']);
+    }
+
+    setState(() {
+      noteTitle = List<String>.from(tempNoteTitleWait);
+      noteContent = List<String>.from(tempNoteContentWait);
+      originalNoteTitle = List<String>.from(tempNoteTitleWait);
+      originalNoteContent = List<String>.from(tempNoteContentWait);
+    });
+  }
+
+  // A method that retrieves all the notes from the Notes table.
+  Future<List<Map<String, dynamic>>> notesRetrieve(database) async {
+    // Get a reference to the database.
+    final db = await database;
+    // Query the table for all The notes.
+    final List<Map<String, dynamic>> maps = await db.query('Notes');
+    return maps;
+  }
+
   Future<void> _navigateAndDisplaySelection(BuildContext context) async {
     // Navigator.push returns a Future that completes after calling
     // Navigator.pop on the Selection Screen.
@@ -59,12 +113,39 @@ class _MyWidgetState extends State<ListOfNotes> {
       // Create the Note screen in the next step.
       MaterialPageRoute(builder: (context) => Note()),
     );
+    // Avoid errors caused by flutter upgrade.
+    // Importing 'package:flutter/widgets.dart' is required.
+    WidgetsFlutterBinding.ensureInitialized();
+    // Open the database and store the reference.
+    final database = openDatabase(
+      // Set the path to the database. Note: Using the `join` function from the
+      // `path` package is best practice to ensure the path is correctly
+      // constructed for each platform.
+      join(await getDatabasesPath(), 'notes.db'),
+    );
+    await insertNote(result, database);
     setState(() {
       noteTitle.add(result['title']);
       noteContent.add(result['subtitle']);
       originalNoteTitle.add(result['title']);
       originalNoteContent.add(result['subtitle']);
     });
+  }
+
+  // Define a function that inserts dogs into the database
+  Future<void> insertNote(mapNote, database) async {
+    // Get a reference to the database.
+    final db = await database;
+
+    // Insert the Dog into the correct table. You might also specify the
+    // `conflictAlgorithm` to use in case the same dog is inserted twice.
+    //
+    // In this case, replace any previous data.
+    await db.insert(
+      'Notes',
+      mapNote,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   void displayContaining(String string) {
