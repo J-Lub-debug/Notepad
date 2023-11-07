@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:notepad/screens/Note.dart';
 import 'dart:async';
 import 'package:path/path.dart';
@@ -18,6 +19,13 @@ class _MyWidgetState extends State<ListOfNotes> {
   late var originalNoteTitle = [];
   late var originalNoteContent = [];
 
+  late var isSelected =
+      List<bool>.filled(noteTitle.length, false, growable: true);
+  late var tileColor =
+      List<Color>.filled(noteTitle.length, Colors.white, growable: true);
+
+  var appBarActionsEnabled = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,6 +37,13 @@ class _MyWidgetState extends State<ListOfNotes> {
             displayContaining(string);
           },
         ),
+        actions: <Widget>[
+          if (appBarActionsEnabled)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Icon(Icons.delete),
+            ),
+        ],
         backgroundColor: Colors.yellow,
       ),
       body: ListView.builder(
@@ -43,7 +58,14 @@ class _MyWidgetState extends State<ListOfNotes> {
           itemBuilder: (context, index) {
             return ListTile(
                 title: Text(noteTitle[index]),
-                subtitle: Text(noteContent[index]));
+                subtitle: Text(noteContent[index]),
+                onLongPress: () {
+                  toggleSelection(index);
+                  toggleActions();
+                },
+                selected: isSelected[index],
+                tileColor: tileColor[index],
+                enabled: true);
           }),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
@@ -52,6 +74,28 @@ class _MyWidgetState extends State<ListOfNotes> {
         },
       ),
     );
+  }
+
+  void toggleSelection(index) {
+    setState(() {
+      if (isSelected[index]) {
+        tileColor[index] = Colors.white;
+        isSelected[index] = false;
+      } else {
+        tileColor[index] = Colors.grey.shade300;
+        isSelected[index] = true;
+      }
+    });
+  }
+
+  void toggleActions() {
+    setState(() {
+      if (isSelected.any((isTrue) => isTrue == true)) {
+        appBarActionsEnabled = true;
+      } else {
+        appBarActionsEnabled = false;
+      }
+    });
   }
 
   @override
@@ -64,7 +108,7 @@ class _MyWidgetState extends State<ListOfNotes> {
     var tempNoteTitleWait = [];
     var tempNoteContentWait = [];
 
-    final database = openDatabase(
+    final database = await openDatabase(
       // Set the path to the database. Note: Using the `join` function from the
       // `path` package is best practice to ensure the path is correctly
       // constructed for each platform.
@@ -81,7 +125,7 @@ class _MyWidgetState extends State<ListOfNotes> {
       version: 1,
     );
 
-    final List<Map<String, dynamic>> result = await notesRetrieve(database);
+    final List<Map<String, dynamic>> result = await selectNotesDB(database);
 
     for (final row in result) {
       tempNoteTitleWait.add(row['title']);
@@ -97,7 +141,7 @@ class _MyWidgetState extends State<ListOfNotes> {
   }
 
   // A method that retrieves all the notes from the Notes table.
-  Future<List<Map<String, dynamic>>> notesRetrieve(database) async {
+  Future<List<Map<String, dynamic>>> selectNotesDB(database) async {
     // Get a reference to the database.
     final db = await database;
     // Query the table for all The notes.
@@ -129,16 +173,18 @@ class _MyWidgetState extends State<ListOfNotes> {
       noteContent.add(result['subtitle']);
       originalNoteTitle.add(result['title']);
       originalNoteContent.add(result['subtitle']);
+      isSelected.add(false);
+      tileColor.add(Colors.white);
     });
   }
 
-  // Define a function that inserts dogs into the database
+  // Define a function that inserts notes into the database
   Future<void> insertNote(mapNote, database) async {
     // Get a reference to the database.
     final db = await database;
 
-    // Insert the Dog into the correct table. You might also specify the
-    // `conflictAlgorithm` to use in case the same dog is inserted twice.
+    // Insert the Note into the correct table. You might also specify the
+    // `conflictAlgorithm` to use in case the same note is inserted twice.
     //
     // In this case, replace any previous data.
     await db.insert(
