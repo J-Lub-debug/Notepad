@@ -1,9 +1,43 @@
+//Make an single database connection on init
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:notepad/screens/Note.dart';
 import 'dart:async';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+
+class DatabaseProvider {
+  static Database? _database;
+
+  static Future<Database> get database async {
+    if (_database != null) {
+      return _database!;
+    }
+    _database = await _initDatabase();
+    return _database!;
+  }
+
+  static Future<Database> _initDatabase() async {
+    // Set the path to the database. Note: Using the `join` function from the
+    // `path` package is best practice to ensure the path is correctly
+    // constructed for each platform.
+    final path = join(await getDatabasesPath(), 'notes.db');
+    return await openDatabase(
+      path,
+      // When the database is first created, create a table to store notes.
+      onCreate: (db, version) {
+        // Run the CREATE TABLE statement on the database.
+        return db.execute(
+          'CREATE TABLE Notes(id INTEGER PRIMARY KEY, title TEXT, subtitle TEXT)',
+        );
+      },
+      // Set the version. This executes the onCreate function and provides a
+      // path to perform database upgrades and downgrades.
+      version: 1,
+    );
+  }
+}
 
 class ListOfNotes extends StatefulWidget {
   const ListOfNotes({super.key});
@@ -39,10 +73,10 @@ class _MyWidgetState extends State<ListOfNotes> {
         ),
         actions: <Widget>[
           if (appBarActionsEnabled)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Icon(Icons.delete),
-            ),
+            IconButton(
+                icon: Icon(Icons.delete),
+                padding: EdgeInsets.all(2.0),
+                onPressed: () => deleteSelectedNotes()),
         ],
         backgroundColor: Colors.yellow,
       ),
@@ -74,6 +108,34 @@ class _MyWidgetState extends State<ListOfNotes> {
         },
       ),
     );
+  }
+
+  Future<void> deleteSelectedNotes() async {
+    final database = await DatabaseProvider.database;
+    // Remove the Note from the database.
+    for (int i = 0; i < noteTitle.length; i++) {
+      if (isSelected[i] == true) {
+        await database.delete(
+          'Notes',
+          // Use a `where` clause to delete a specific note.
+          where: 'id = ?',
+          // Pass the Note's id as a whereArg to prevent SQL injection.
+          whereArgs: [i],
+        );
+      }
+    }
+    setState(() {
+      for (int i = 0; i < isSelected.length; i++) {
+        if (isSelected[i] == true) {
+          noteTitle.removeAt(i);
+          noteContent.removeAt(i);
+          originalNoteTitle.removeAt(i);
+          originalNoteContent.removeAt(i);
+          isSelected.removeAt(i);
+          tileColor.removeAt(i);
+        }
+      }
+    });
   }
 
   void toggleSelection(index) {
@@ -108,22 +170,7 @@ class _MyWidgetState extends State<ListOfNotes> {
     var tempNoteTitleWait = [];
     var tempNoteContentWait = [];
 
-    final database = await openDatabase(
-      // Set the path to the database. Note: Using the `join` function from the
-      // `path` package is best practice to ensure the path is correctly
-      // constructed for each platform.
-      join(await getDatabasesPath(), 'notes.db'),
-      // When the database is first created, create a table to store notes.
-      onCreate: (db, version) {
-        // Run the CREATE TABLE statement on the database.
-        return db.execute(
-          'CREATE TABLE Notes(title TEXT PRIMARY KEY, subtitle TEXT)',
-        );
-      },
-      // Set the version. This executes the onCreate function and provides a
-      // path to perform database upgrades and downgrades.
-      version: 1,
-    );
+    final database = await DatabaseProvider.database;
 
     final List<Map<String, dynamic>> result = await selectNotesDB(database);
 
