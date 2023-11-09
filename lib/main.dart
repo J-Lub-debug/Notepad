@@ -1,3 +1,5 @@
+//Fix the deletion, edition bug where deleted/modified notes revert on hot reload/restart
+
 import 'package:flutter/material.dart';
 import 'package:notepad/screens/Note.dart';
 import 'dart:async';
@@ -66,7 +68,10 @@ class _MyWidgetState extends State<ListOfNotes> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Notepad'),
+        title: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.format_list_bulleted),
+          Icon(Icons.check_box_outlined)
+        ]),
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(50.0),
           child: TextField(
@@ -130,8 +135,8 @@ class _MyWidgetState extends State<ListOfNotes> {
     final database = await DatabaseProvider.database;
 
     if (result != null) {
-      await database
-          .update('Notes', result, where: 'id = ?', whereArgs: [index]);
+      await database.update('Notes', result,
+          where: 'title = ?', whereArgs: [noteTitle[index]]);
 
       setState(() {
         noteTitle[index] = result['title'];
@@ -150,9 +155,9 @@ class _MyWidgetState extends State<ListOfNotes> {
         await database.delete(
           'Notes',
           // Use a `where` clause to delete a specific note.
-          where: 'id = ?',
+          where: 'title = ?',
           // Pass the Note's id as a whereArg to prevent SQL injection
-          whereArgs: [i],
+          whereArgs: [noteTitle[i]],
         );
 
         indicesToDelete.add(i);
@@ -160,6 +165,7 @@ class _MyWidgetState extends State<ListOfNotes> {
     }
 
     setState(() {
+      //Reverse iteration to do not affect the index
       for (int i = indicesToDelete.length - 1; i >= 0; i--) {
         int index = indicesToDelete[i];
 
@@ -250,15 +256,9 @@ class _MyWidgetState extends State<ListOfNotes> {
     // Importing 'package:flutter/widgets.dart' is required.
     WidgetsFlutterBinding.ensureInitialized();
     // Open the database and store the reference.
-    final database = openDatabase(
-      // Set the path to the database. Note: Using the `join` function from the
-      // `path` package is best practice to ensure the path is correctly
-      // constructed for each platform.
-      join(await getDatabasesPath(), 'notes.db'),
-    );
     if (result != null) {
       if (result['title'] != '' && result['subtitle'] != '') {
-        await insertNote(result, database);
+        await insertNote(result);
         setState(() {
           noteTitle.add(result['title']);
           noteContent.add(result['subtitle']);
@@ -272,9 +272,9 @@ class _MyWidgetState extends State<ListOfNotes> {
   }
 
   // Define a function that inserts notes into the database
-  Future<void> insertNote(mapNote, database) async {
+  Future<void> insertNote(mapNote) async {
     // Get a reference to the database.
-    final db = await database;
+    final db = await DatabaseProvider.database;
 
     // Insert the Note into the correct table. You might also specify the
     // `conflictAlgorithm` to use in case the same note is inserted twice.
