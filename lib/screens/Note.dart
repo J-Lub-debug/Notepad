@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 class Note extends StatefulWidget {
-  const Note({super.key});
+  String? title;
+  String? subtitle;
+
+  Note([Key? key, this.title, this.subtitle]) : super(key: key);
 
   @override
   State<Note> createState() => _NoteState();
@@ -14,8 +17,8 @@ class _NoteState extends State<Note> {
   @override
   void initState() {
     super.initState();
-    _titleController.text = '';
-    _subtitleController.text = '';
+    _titleController.text = widget.title ?? '';
+    _subtitleController.text = widget.subtitle ?? '';
     _titleController.addListener(() {});
     _subtitleController.addListener(() {});
   }

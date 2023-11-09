@@ -1,4 +1,4 @@
-//Make an single database connection on init
+//Edit note
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
+//Singleton
 class DatabaseProvider {
   static Database? _database;
 
@@ -97,6 +98,9 @@ class _MyWidgetState extends State<ListOfNotes> {
                   toggleSelection(index);
                   toggleActions();
                 },
+                onTap: () {
+                  _editNote(context, index);
+                },
                 selected: isSelected[index],
                 tileColor: tileColor[index],
                 enabled: true);
@@ -108,6 +112,27 @@ class _MyWidgetState extends State<ListOfNotes> {
         },
       ),
     );
+  }
+
+  Future<void> _editNote(BuildContext context, int index) async {
+    final result = await Navigator.push(
+      context,
+      // Create the Note screen in the next step.
+      MaterialPageRoute(
+          builder: (context) =>
+              Note(null, noteTitle[index], noteContent[index])),
+    );
+    final database = await DatabaseProvider.database;
+
+    if (result != null) {
+      await database
+          .update('Notes', result, where: 'id = ?', whereArgs: [index]);
+
+      setState(() {
+        noteTitle[index] = result['title'];
+        noteContent[index] = result['subtitle'];
+      });
+    }
   }
 
   Future<void> deleteSelectedNotes() async {
@@ -214,15 +239,19 @@ class _MyWidgetState extends State<ListOfNotes> {
       // constructed for each platform.
       join(await getDatabasesPath(), 'notes.db'),
     );
-    await insertNote(result, database);
-    setState(() {
-      noteTitle.add(result['title']);
-      noteContent.add(result['subtitle']);
-      originalNoteTitle.add(result['title']);
-      originalNoteContent.add(result['subtitle']);
-      isSelected.add(false);
-      tileColor.add(Colors.white);
-    });
+    if (result != null) {
+      if (result['title'] != '' && result['subtitle'] != '') {
+        await insertNote(result, database);
+        setState(() {
+          noteTitle.add(result['title']);
+          noteContent.add(result['subtitle']);
+          originalNoteTitle.add(result['title']);
+          originalNoteContent.add(result['subtitle']);
+          isSelected.add(false);
+          tileColor.add(Colors.white);
+        });
+      }
+    }
   }
 
   // Define a function that inserts notes into the database
