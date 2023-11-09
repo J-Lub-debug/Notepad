@@ -1,7 +1,4 @@
-//Edit note
-
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:notepad/screens/Note.dart';
 import 'dart:async';
 import 'package:path/path.dart';
@@ -10,12 +7,14 @@ import 'package:sqflite/sqflite.dart';
 //Singleton
 class DatabaseProvider {
   static Database? _database;
+  static bool _isDatabaseInitialized = false;
 
   static Future<Database> get database async {
-    if (_database != null) {
+    if (_isDatabaseInitialized) {
       return _database!;
     }
     _database = await _initDatabase();
+    _isDatabaseInitialized = true;
     return _database!;
   }
 
@@ -48,6 +47,8 @@ class ListOfNotes extends StatefulWidget {
 }
 
 class _MyWidgetState extends State<ListOfNotes> {
+  bool _isInitialized = false;
+
   var noteTitle = [];
   var noteContent = [];
 
@@ -65,12 +66,16 @@ class _MyWidgetState extends State<ListOfNotes> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(Icons.search),
-        title: TextField(
-          //No const because it changes
-          onChanged: (String string) {
-            displayContaining(string);
-          },
+        title: Text('Notepad'),
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(50.0),
+          child: TextField(
+            decoration: InputDecoration(prefixIcon: Icon(Icons.search)),
+            //No const because it changes
+            onChanged: (String string) {
+              displayContaining(string);
+            },
+          ),
         ),
         actions: <Widget>[
           if (appBarActionsEnabled)
@@ -137,28 +142,33 @@ class _MyWidgetState extends State<ListOfNotes> {
 
   Future<void> deleteSelectedNotes() async {
     final database = await DatabaseProvider.database;
+
+    List<int> indicesToDelete = [];
     // Remove the Note from the database.
-    for (int i = 0; i < noteTitle.length; i++) {
+    for (int i = 0; i < isSelected.length; i++) {
       if (isSelected[i] == true) {
         await database.delete(
           'Notes',
           // Use a `where` clause to delete a specific note.
           where: 'id = ?',
-          // Pass the Note's id as a whereArg to prevent SQL injection.
+          // Pass the Note's id as a whereArg to prevent SQL injection
           whereArgs: [i],
         );
+
+        indicesToDelete.add(i);
       }
     }
+
     setState(() {
-      for (int i = 0; i < isSelected.length; i++) {
-        if (isSelected[i] == true) {
-          noteTitle.removeAt(i);
-          noteContent.removeAt(i);
-          originalNoteTitle.removeAt(i);
-          originalNoteContent.removeAt(i);
-          isSelected.removeAt(i);
-          tileColor.removeAt(i);
-        }
+      for (int i = indicesToDelete.length - 1; i >= 0; i--) {
+        int index = indicesToDelete[i];
+
+        noteTitle.removeAt(index);
+        noteContent.removeAt(index);
+        originalNoteTitle.removeAt(index);
+        originalNoteContent.removeAt(index);
+        isSelected.removeAt(index);
+        tileColor.removeAt(index);
       }
     });
   }
@@ -188,10 +198,17 @@ class _MyWidgetState extends State<ListOfNotes> {
   @override
   void initState() {
     super.initState();
-    retrieveNotes();
+    _initializeNotes();
   }
 
-  Future<void> retrieveNotes() async {
+  Future<void> _initializeNotes() async {
+    if (!_isInitialized) {
+      await _retrieveNotes();
+      _isInitialized = true;
+    }
+  }
+
+  Future<void> _retrieveNotes() async {
     var tempNoteTitleWait = [];
     var tempNoteContentWait = [];
 
