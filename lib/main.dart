@@ -1,5 +1,3 @@
-//Fix the deletion, edition bug where deleted/modified notes revert on hot reload/restart
-
 import 'package:flutter/material.dart';
 import 'package:notepad/screens/Note.dart';
 import 'dart:async';
@@ -48,8 +46,13 @@ class ListOfNotes extends StatefulWidget {
   State<ListOfNotes> createState() => _MyWidgetState();
 }
 
-class _MyWidgetState extends State<ListOfNotes> {
+class _MyWidgetState extends State<ListOfNotes>
+    with SingleTickerProviderStateMixin {
   bool _isInitialized = false;
+
+  late TabController _tabController;
+
+  var iconColors = [Colors.red, Colors.black];
 
   var noteTitle = [];
   var noteContent = [];
@@ -68,17 +71,50 @@ class _MyWidgetState extends State<ListOfNotes> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.format_list_bulleted),
-          Icon(Icons.check_box_outlined)
-        ]),
+        title: TabBar(
+          controller: _tabController,
+          tabs: [
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: InkWell(
+                onTap: () {
+                  // Handle tab selection
+                  _tabController.animateTo(0);
+                  setState(() {
+                    updateIconColor(0);
+                  });
+                },
+                child: Icon(Icons.format_list_bulleted, color: iconColors[0]),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: InkWell(
+                onTap: () {
+                  // Handle tab selection
+                  _tabController.animateTo(1);
+                  setState(() {
+                    updateIconColor(1);
+                  });
+                },
+                child: Icon(Icons.check_box_outlined, color: iconColors[1]),
+              ),
+            ),
+          ],
+        ),
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(50.0),
           child: TextField(
-            decoration: InputDecoration(prefixIcon: Icon(Icons.search)),
+            decoration: InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Search notes',
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0))),
             //No const because it changes
             onChanged: (String string) {
-              displayContaining(string);
+              if (_tabController.index == 0) {
+                displayContaining(string);
+              } else {}
             },
           ),
         ),
@@ -91,37 +127,51 @@ class _MyWidgetState extends State<ListOfNotes> {
         ],
         backgroundColor: Colors.yellow,
       ),
-      body: ListView.builder(
-          itemCount: noteTitle.length,
-          prototypeItem: ListTile(
-            contentPadding: EdgeInsets.all(10),
-            title:
-                Text(noteTitle.firstWhere((element) => true, orElse: () => '')),
-            subtitle: Text(
-                noteContent.firstWhere((element) => true, orElse: () => '')),
-          ),
-          itemBuilder: (context, index) {
-            return ListTile(
-                title: Text(noteTitle[index]),
-                subtitle: Text(noteContent[index]),
-                onLongPress: () {
-                  toggleSelection(index);
-                  toggleActions();
-                },
-                onTap: () {
-                  _editNote(context, index);
-                },
-                selected: isSelected[index],
-                tileColor: tileColor[index],
-                enabled: true);
-          }),
+      body: TabBarView(controller: _tabController, children: [
+        ListView.builder(
+            itemCount: noteTitle.length,
+            prototypeItem: ListTile(
+              contentPadding: EdgeInsets.all(10),
+              title: Text(
+                  noteTitle.firstWhere((element) => true, orElse: () => '')),
+              subtitle: Text(
+                  noteContent.firstWhere((element) => true, orElse: () => '')),
+            ),
+            itemBuilder: (context, index) {
+              return ListTile(
+                  title: Text(noteTitle[index]),
+                  subtitle: Text(noteContent[index]),
+                  onLongPress: () {
+                    toggleSelection(index);
+                    toggleActions();
+                  },
+                  onTap: () {
+                    _editNote(context, index);
+                  },
+                  selected: isSelected[index],
+                  tileColor: tileColor[index],
+                  enabled: true);
+            }),
+        Text('eee')
+      ]),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
-          _navigateAndDisplaySelection(context);
+          if (_tabController.index == 0) {
+            _navigateAndDisplaySelection(context);
+          } else {}
         },
       ),
     );
+  }
+
+  void updateIconColor(int tabIndex) {
+    setState(() {
+      // Reset all colors to black
+      iconColors = [Colors.black, Colors.black];
+      // Update the color of the tapped icon
+      iconColors[tabIndex] = Colors.red;
+    });
   }
 
   Future<void> _editNote(BuildContext context, int index) async {
@@ -204,7 +254,14 @@ class _MyWidgetState extends State<ListOfNotes> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(vsync: this, length: 2);
     _initializeNotes();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeNotes() async {
