@@ -50,10 +50,18 @@ class _MyWidgetState extends State<ListOfNotes>
     with SingleTickerProviderStateMixin {
   bool _isInitialized = false;
 
+  //ToDo's
+  var toDo = {
+    0: ['point1', 'point2', 'point3'],
+    1: ['point 1', 'point 2', 'point3']
+  };
+
+  //Tabs
   late TabController _tabController;
 
   var iconColors = [Colors.red, Colors.black];
 
+  //Notes
   var noteTitle = [];
   var noteContent = [];
 
@@ -113,7 +121,7 @@ class _MyWidgetState extends State<ListOfNotes>
             //No const because it changes
             onChanged: (String string) {
               if (_tabController.index == 0) {
-                displayContaining(string);
+                displayContainingNotes(string);
               } else {}
             },
           ),
@@ -152,13 +160,25 @@ class _MyWidgetState extends State<ListOfNotes>
                   tileColor: tileColor[index],
                   enabled: true);
             }),
-        Text('eee')
+        ListView.builder(
+          itemCount: toDo.length,
+          prototypeItem: ListTile(
+              contentPadding: EdgeInsets.all(10),
+              subtitle: Text(toDo[0]!.join("\n"))),
+          itemBuilder: (context, index) {
+            return ListTile(
+              subtitle: Text(toDo[0]!.join("\n")),
+              onTap: () {},
+              enabled: true,
+            );
+          },
+        )
       ]),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
           if (_tabController.index == 0) {
-            _navigateAndDisplaySelection(context);
+            _addNote(context);
           } else {}
         },
       ),
@@ -301,7 +321,7 @@ class _MyWidgetState extends State<ListOfNotes>
     return maps;
   }
 
-  Future<void> _navigateAndDisplaySelection(BuildContext context) async {
+  Future<void> _addNote(BuildContext context) async {
     // Navigator.push returns a Future that completes after calling
     // Navigator.pop on the Selection Screen.
     final result = await Navigator.push(
@@ -344,7 +364,7 @@ class _MyWidgetState extends State<ListOfNotes>
     );
   }
 
-  void displayContaining(String string) {
+  void displayContainingNotes(String string) {
     var noteTitleContaining = [];
     var noteContentContaining = [];
 
