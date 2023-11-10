@@ -54,7 +54,7 @@ class _MyWidgetState extends State<ListOfNotes>
   //ToDo's
   var toDo = {
     0: ['point1', 'point2', 'point3'],
-    1: ['point 1', 'point 2', 'point3']
+    1: ['point 1', 'point 2', 'point3', 'point 4']
   };
 
   //Tabs
@@ -161,16 +161,32 @@ class _MyWidgetState extends State<ListOfNotes>
                   tileColor: tileColor[index],
                   enabled: true);
             }),
-        ListView.builder(
+        ListView.separated(
           itemCount: toDo.length,
-          prototypeItem: ListTile(
-              contentPadding: EdgeInsets.all(10),
-              subtitle:
-                  CheckboxLabel(checked: false, label: toDo[0].toString())),
+          separatorBuilder: (context, index) =>
+              Divider(), // Add a divider between items
           itemBuilder: (context, index) {
+            final currentList = toDo[index];
+
             return ListTile(
-              subtitle:
-                  CheckboxLabel(checked: false, label: toDo[index].toString()),
+              subtitle: currentList != null
+                  ? ListView.builder(
+                      shrinkWrap:
+                          true, // Ensure the inner ListView takes only the space it needs
+                      itemCount: currentList.length,
+                      itemBuilder: (context, i) {
+                        final currentItem = currentList[i];
+
+                        return ListTile(
+                          title: CheckboxLabel(
+                              checked: false,
+                              label: currentItem ?? 'Default Value'),
+                          onTap: () {},
+                          enabled: true,
+                        );
+                      },
+                    )
+                  : const SizedBox(), // Handle null case for currentList
               onTap: () {},
               enabled: true,
             );
