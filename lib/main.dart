@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:notepad/screens/Note.dart';
+import 'package:notepad/widgets/CheckboxLabel.dart';
 import 'dart:async';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -164,10 +165,12 @@ class _MyWidgetState extends State<ListOfNotes>
           itemCount: toDo.length,
           prototypeItem: ListTile(
               contentPadding: EdgeInsets.all(10),
-              subtitle: Text(toDo[0]!.join("\n"))),
+              subtitle:
+                  CheckboxLabel(checked: false, label: toDo[0].toString())),
           itemBuilder: (context, index) {
             return ListTile(
-              subtitle: Text(toDo[0]!.join("\n")),
+              subtitle:
+                  CheckboxLabel(checked: false, label: toDo[index].toString()),
               onTap: () {},
               enabled: true,
             );
