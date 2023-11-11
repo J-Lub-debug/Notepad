@@ -1,3 +1,5 @@
+//Make tabs only clickable by Icons or other way around
+
 import 'package:flutter/material.dart';
 import 'package:notepad/screens/Note.dart';
 import 'package:notepad/widgets/CheckboxLabel.dart';
@@ -186,10 +188,11 @@ class _MyWidgetState extends State<ListOfNotes>
                       itemBuilder: (context, i) {
                         final currentItem = currentList.toDo[i];
                         return ListTile(
-                          title:
-                              CheckboxLabel(checked: false, label: currentItem),
-                          onTap: () {},
-                          enabled: true,
+                          title: CheckboxLabel(
+                            checked: false,
+                            label: currentItem,
+                            editable: false,
+                          ),
                         );
                       },
                     )
@@ -205,9 +208,40 @@ class _MyWidgetState extends State<ListOfNotes>
         onPressed: () {
           if (_tabController.index == 0) {
             _addNote(context);
-          } else {}
+          } else {
+            _showDialogBox(context);
+          }
         },
       ),
+    );
+  }
+
+  Future<void> _showDialogBox(BuildContext context) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const TextField(
+            decoration: InputDecoration(hintText: 'Title'),
+          ),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                CheckboxLabel(checked: false, label: '', editable: true)
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Approve'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
