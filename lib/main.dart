@@ -40,6 +40,13 @@ class DatabaseProvider {
   }
 }
 
+class ToDoList {
+  final int id;
+  final String title;
+  final List<String> toDo;
+  const ToDoList({required this.id, this.title = '', required this.toDo});
+}
+
 class ListOfNotes extends StatefulWidget {
   const ListOfNotes({super.key});
 
@@ -52,10 +59,12 @@ class _MyWidgetState extends State<ListOfNotes>
   bool _isInitialized = false;
 
   //ToDo's
-  var toDo = {
-    0: ['point1', 'point2', 'point3'],
-    1: ['point 1', 'point 2', 'point3', 'point 4']
-  };
+
+  var toDo = [
+    const ToDoList(id: 0, title: 'First', toDo: ['point1', 'point2', 'point3']),
+    const ToDoList(
+        id: 1, title: 'Second', toDo: ['point1', 'point2', 'point3', 'point4'])
+  ];
 
   //Tabs
   late TabController _tabController;
@@ -167,20 +176,18 @@ class _MyWidgetState extends State<ListOfNotes>
               Divider(), // Add a divider between items
           itemBuilder: (context, index) {
             final currentList = toDo[index];
-
             return ListTile(
+              title: Text(toDo[index].title),
               subtitle: currentList != null
                   ? ListView.builder(
                       shrinkWrap:
                           true, // Ensure the inner ListView takes only the space it needs
-                      itemCount: currentList.length,
+                      itemCount: currentList.toDo.length,
                       itemBuilder: (context, i) {
-                        final currentItem = currentList[i];
-
+                        final currentItem = currentList.toDo[i];
                         return ListTile(
-                          title: CheckboxLabel(
-                              checked: false,
-                              label: currentItem ?? 'Default Value'),
+                          title:
+                              CheckboxLabel(checked: false, label: currentItem),
                           onTap: () {},
                           enabled: true,
                         );
