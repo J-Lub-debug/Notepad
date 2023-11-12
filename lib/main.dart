@@ -217,6 +217,7 @@ class _MyWidgetState extends State<ListOfNotes>
   }
 
   Future<void> _showDialogBox(BuildContext context) async {
+    List<Widget> rows = [];
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -227,7 +228,7 @@ class _MyWidgetState extends State<ListOfNotes>
           ),
           content: SingleChildScrollView(
             child: ListBody(
-              children: <Widget>[
+              children: rows = <Widget>[
                 CheckboxLabel(checked: false, label: '', editable: true)
               ],
             ),
@@ -236,6 +237,7 @@ class _MyWidgetState extends State<ListOfNotes>
             TextButton(
               child: const Text('Approve'),
               onPressed: () {
+                print(rows);
                 Navigator.of(context).pop();
               },
             ),
