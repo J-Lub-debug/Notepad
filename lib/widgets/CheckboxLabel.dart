@@ -1,4 +1,4 @@
-//Change points, checkedPoints, _textController, _focusNodes into the Class
+//Seperate CheckBoxLabel to CheckBoxLabelTree and CheckboxLabel
 //Add focus to new row upon creation, keyboard doesn't appear, it may have something to do with textInputAction: TextInputAction.next,
 
 import 'package:flutter/material.dart';
@@ -25,42 +25,44 @@ class CheckboxLabel extends StatefulWidget {
   bool? checked;
   String label;
   bool editable;
+  List<Point> points;
 
   CheckboxLabel({
     Key? key,
     required this.checked,
     required this.label,
     required this.editable,
-  }) : super(key: key);
+    List<Point>? points,
+  })  : points = points ?? [Point(id: 0, checked: false)],
+        super(key: key);
 
   @override
   State<CheckboxLabel> createState() => _CheckboxLabelState();
 }
 
 class _CheckboxLabelState extends State<CheckboxLabel> {
-  List<Point> points = [Point(id: 0, checked: false)];
-
   @override
   Widget build(BuildContext context) {
     return widget.editable
         ? SingleChildScrollView(
             child: Column(
               children: [
-                for (int index = 0; index < points.length; index++)
+                for (int index = 0; index < widget.points.length; index++)
                   ListTile(
                     leading: Checkbox(
-                      value: points[index].checked,
+                      value: widget.points[index].checked,
                       onChanged: (val) {
-                        setState(() => points[index].checked = val!);
+                        setState(() => widget.points[index].checked = val!);
                       },
                     ),
                     title: TextField(
                       //enabled: false,
-                      controller: points[index].textController,
+                      controller: widget.points[index].textController,
                       keyboardType: TextInputType.multiline,
-                      focusNode: points[index].focusNode,
+                      focusNode: widget.points[index].focusNode,
                       textInputAction: TextInputAction.next,
-                      onSubmitted: (value) => _onSubmitted(index),
+                      onSubmitted: (value) =>
+                          _onSubmitted(index + 1), //if the first point has id:0
                       onChanged: (value) => _onEmptyDelete(index, value),
                     ),
                   ),
@@ -82,20 +84,20 @@ class _CheckboxLabelState extends State<CheckboxLabel> {
 
   void _onSubmitted(index) {
     setState(() {
-      points.add(Point(id: index, checked: false));
+      widget.points.add(Point(id: index, checked: false));
     });
     // Set focus to the new TextField
-    FocusScope.of(context).requestFocus(points.last.focusNode);
+    FocusScope.of(context).requestFocus(widget.points.last.focusNode);
     //! Keyboard doesn't show up even though the focus shows displaying blue outline on Text field
   }
 
   void _onEmptyDelete(index, value) {
-    if (value.length == 0 && points.length > 1) {
+    if (value.length == 0 && widget.points.length > 1) {
       setState(() {
-        points.removeAt(index);
+        widget.points.removeAt(index);
       });
       //Set focus to previous TextField
-      FocusScope.of(context).requestFocus(points.last.focusNode);
+      FocusScope.of(context).requestFocus(widget.points.last.focusNode);
     }
   }
 }

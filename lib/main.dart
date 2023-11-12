@@ -42,11 +42,17 @@ class DatabaseProvider {
   }
 }
 
+class ListPoint {
+  final String content;
+  final bool isChecked;
+
+  const ListPoint({required this.content, required this.isChecked});
+}
+
 class ToDoList {
-  final int id;
   final String title;
-  final List<String> toDo;
-  const ToDoList({required this.id, this.title = '', required this.toDo});
+  final List<ListPoint> points;
+  const ToDoList({this.title = '', required this.points});
 }
 
 class ListOfNotes extends StatefulWidget {
@@ -62,10 +68,18 @@ class _MyWidgetState extends State<ListOfNotes>
 
   //ToDo's
 
-  var toDo = [
-    const ToDoList(id: 0, title: 'First', toDo: ['point1', 'point2', 'point3']),
-    const ToDoList(
-        id: 1, title: 'Second', toDo: ['point1', 'point2', 'point3', 'point4'])
+  List<ToDoList> toDoLists = [
+    const ToDoList(title: 'First', points: [
+      ListPoint(content: 'point1', isChecked: false),
+      ListPoint(content: 'point2', isChecked: false),
+      ListPoint(content: 'point3', isChecked: false)
+    ]),
+    const ToDoList(title: 'Second', points: [
+      ListPoint(content: 'point1', isChecked: false),
+      ListPoint(content: 'point2', isChecked: false),
+      ListPoint(content: 'point3', isChecked: false),
+      ListPoint(content: 'point4', isChecked: false)
+    ])
   ];
 
   //Tabs
@@ -173,20 +187,20 @@ class _MyWidgetState extends State<ListOfNotes>
                   enabled: true);
             }),
         ListView.separated(
-          itemCount: toDo.length,
+          itemCount: toDoLists.length,
           separatorBuilder: (context, index) =>
               Divider(), // Add a divider between items
           itemBuilder: (context, index) {
-            final currentList = toDo[index];
+            final currentList = toDoLists[index];
             return ListTile(
-              title: Text(toDo[index].title),
+              title: Text(toDoLists[index].title),
               subtitle: currentList != null
                   ? ListView.builder(
                       shrinkWrap:
                           true, // Ensure the inner ListView takes only the space it needs
-                      itemCount: currentList.toDo.length,
+                      itemCount: currentList.points.length,
                       itemBuilder: (context, i) {
-                        final currentItem = currentList.toDo[i];
+                        final currentItem = currentList.points[i].content;
                         return ListTile(
                           title: CheckboxLabel(
                             checked: false,
@@ -217,7 +231,7 @@ class _MyWidgetState extends State<ListOfNotes>
   }
 
   Future<void> _showDialogBox(BuildContext context) async {
-    List<Widget> rows = [];
+    CheckboxLabel checkboxLabel;
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -228,8 +242,9 @@ class _MyWidgetState extends State<ListOfNotes>
           ),
           content: SingleChildScrollView(
             child: ListBody(
-              children: rows = <Widget>[
-                CheckboxLabel(checked: false, label: '', editable: true)
+              children: <Widget>[
+                checkboxLabel =
+                    CheckboxLabel(checked: false, label: '', editable: true)
               ],
             ),
           ),
@@ -237,7 +252,7 @@ class _MyWidgetState extends State<ListOfNotes>
             TextButton(
               child: const Text('Approve'),
               onPressed: () {
-                print(rows);
+                _addToDo(checkboxLabel);
                 Navigator.of(context).pop();
               },
             ),
@@ -245,6 +260,28 @@ class _MyWidgetState extends State<ListOfNotes>
         );
       },
     );
+  }
+
+  Future<void> _addToDo(CheckboxLabel checkboxLabel) async {
+    var title = checkboxLabel.label;
+    List<String> pointsContent = [];
+    List<bool> isChecked = [];
+
+    for (Point point in checkboxLabel.points) {
+      String text = point.textController.text;
+      bool checked = point.checked;
+      pointsContent.add(text);
+      isChecked.add(checked);
+    }
+
+    List<ListPoint> points = [];
+    for (int i = 0; i < pointsContent.length; i++) {
+      points.add(ListPoint(content: pointsContent[i], isChecked: isChecked[i]));
+    }
+
+    setState(() {
+      toDoLists.add(ToDoList(title: title, points: points));
+    });
   }
 
   void updateIconColor(int tabIndex) {
