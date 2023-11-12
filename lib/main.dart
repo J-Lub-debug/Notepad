@@ -29,11 +29,17 @@ class DatabaseProvider {
     return await openDatabase(
       path,
       // When the database is first created, create a table to store notes.
-      onCreate: (db, version) {
+      onCreate: (db, version) async {
         // Run the CREATE TABLE statement on the database.
-        return db.execute(
+        // CREATE Notes Table
+        await db.execute(
           'CREATE TABLE Notes(id INTEGER PRIMARY KEY, title TEXT, subtitle TEXT)',
         );
+        // CREATE ToDoLists and Points TABLEs
+        await db.execute(
+            'CREATE TABLE ToDoLists (id INTEGER PRIMARY KEY, title TEXT)');
+        await db.execute(
+            'CREATE TABLE Points (id INTEGER PRIMARY KEY, content TEXT, isChecked INTEGER, toDoListId INTEGER, FOREIGN KEY(toDoListId) REFERENCES ToDoLists(id) ON DELETE CASCADE ON UPDATE CASCADE)');
       },
       // Set the version. This executes the onCreate function and provides a
       // path to perform database upgrades and downgrades.
@@ -64,23 +70,12 @@ class ListOfNotes extends StatefulWidget {
 
 class _MyWidgetState extends State<ListOfNotes>
     with SingleTickerProviderStateMixin {
-  bool _isInitialized = false;
+  bool _isNotesInitialized = false;
+  bool _isToDoListsInitialized = false;
 
   //ToDo's
 
-  List<ToDoList> toDoLists = [
-    const ToDoList(title: 'First', points: [
-      ListPoint(content: 'point1', isChecked: false),
-      ListPoint(content: 'point2', isChecked: false),
-      ListPoint(content: 'point3', isChecked: false)
-    ]),
-    const ToDoList(title: 'Second', points: [
-      ListPoint(content: 'point1', isChecked: false),
-      ListPoint(content: 'point2', isChecked: false),
-      ListPoint(content: 'point3', isChecked: false),
-      ListPoint(content: 'point4', isChecked: false)
-    ])
-  ];
+  List<ToDoList> toDoLists = [];
 
   //Tabs
   late TabController _tabController;
@@ -279,6 +274,18 @@ class _MyWidgetState extends State<ListOfNotes>
       points.add(ListPoint(content: pointsContent[i], isChecked: isChecked[i]));
     }
 
+    final Database database = await DatabaseProvider.database;
+
+    int toDoListId = await database.insert('ToDoLists', {'title': title});
+
+    for (ListPoint point in points) {
+      await database.insert('Points', {
+        'content': point.content,
+        'isChecked': point.isChecked ? 1 : 0,
+        'toDoListId': toDoListId
+      });
+    }
+
     setState(() {
       toDoLists.add(ToDoList(title: title, points: points));
     });
@@ -375,6 +382,7 @@ class _MyWidgetState extends State<ListOfNotes>
     super.initState();
     _tabController = TabController(vsync: this, length: 2);
     _initializeNotes();
+    _initializeToDoLists();
   }
 
   @override
@@ -384,9 +392,40 @@ class _MyWidgetState extends State<ListOfNotes>
   }
 
   Future<void> _initializeNotes() async {
-    if (!_isInitialized) {
+    if (!_isNotesInitialized) {
       await _retrieveNotes();
-      _isInitialized = true;
+      _isNotesInitialized = true;
+    }
+  }
+
+  Future<void> _initializeToDoLists() async {
+    if (!_isToDoListsInitialized) {
+      await _retrieveToDoLists();
+      _isToDoListsInitialized = true;
+    }
+  }
+
+  Future<void> _retrieveToDoLists() async {
+    final database = await DatabaseProvider.database;
+
+    final List<Map<String, dynamic>> toDoListMaps =
+        await database.query('ToDoLists');
+
+    for (Map<String, dynamic> toDoListMap in toDoListMaps) {
+      List<Map<String, dynamic>> pointMaps = await database.query(
+        'Points',
+        where: 'toDoListId = ?',
+        whereArgs: [toDoListMap['id']],
+      );
+
+      List<ListPoint> points = pointMaps.map<ListPoint>((pointMap) {
+        return ListPoint(
+          content: pointMap['content'],
+          isChecked: pointMap['isChecked'] == 1,
+        );
+      }).toList();
+
+      toDoLists.add(ToDoList(title: toDoListMap['title'], points: points));
     }
   }
 
