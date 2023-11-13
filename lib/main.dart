@@ -1,4 +1,5 @@
 //Make tabs only clickable by Icons or other way around
+//Add sync with google Chrome or Dropbox
 
 import 'package:flutter/material.dart';
 import 'package:notepad/screens/Note.dart';
@@ -70,12 +71,15 @@ class ListOfNotes extends StatefulWidget {
 
 class _MyWidgetState extends State<ListOfNotes>
     with SingleTickerProviderStateMixin {
+  final TextEditingController _searchBarController = TextEditingController();
+
   bool _isNotesInitialized = false;
   bool _isToDoListsInitialized = false;
 
   //ToDo's
 
   List<ToDoList> toDoLists = [];
+  List<ToDoList> originalToDoLits = [];
 
   //Tabs
   late TabController _tabController;
@@ -89,9 +93,14 @@ class _MyWidgetState extends State<ListOfNotes>
   late var originalNoteTitle = [];
   late var originalNoteContent = [];
 
-  late var isSelected =
+  late var isToDoListSelected =
+      List<bool>.filled(toDoLists.length, false, growable: true);
+  late var toDoListTileColor =
+      List<Color>.filled(toDoLists.length, Colors.white, growable: true);
+
+  late var isNoteSelected =
       List<bool>.filled(noteTitle.length, false, growable: true);
-  late var tileColor =
+  late var noteTileColor =
       List<Color>.filled(noteTitle.length, Colors.white, growable: true);
 
   var appBarActionsEnabled = false;
@@ -102,38 +111,37 @@ class _MyWidgetState extends State<ListOfNotes>
       appBar: AppBar(
         title: TabBar(
           controller: _tabController,
+          onTap: (index) {
+            // Handle tab selection
+            _tabController.animateTo(index);
+            setState(() {
+              isNoteSelected =
+                  List<bool>.filled(noteTitle.length, false, growable: true);
+              noteTileColor = List<Color>.filled(noteTitle.length, Colors.white,
+                  growable: true);
+              isToDoListSelected =
+                  List<bool>.filled(toDoLists.length, false, growable: true);
+              toDoListTileColor = List<Color>.filled(
+                  toDoLists.length, Colors.white,
+                  growable: true);
+              updateIconColor(index);
+            });
+          },
           tabs: [
             Padding(
               padding: const EdgeInsets.all(20.0),
-              child: InkWell(
-                onTap: () {
-                  // Handle tab selection
-                  _tabController.animateTo(0);
-                  setState(() {
-                    updateIconColor(0);
-                  });
-                },
-                child: Icon(Icons.format_list_bulleted, color: iconColors[0]),
-              ),
+              child: Icon(Icons.format_list_bulleted, color: iconColors[0]),
             ),
             Padding(
               padding: const EdgeInsets.all(20.0),
-              child: InkWell(
-                onTap: () {
-                  // Handle tab selection
-                  _tabController.animateTo(1);
-                  setState(() {
-                    updateIconColor(1);
-                  });
-                },
-                child: Icon(Icons.check_box_outlined, color: iconColors[1]),
-              ),
+              child: Icon(Icons.check_box_outlined, color: iconColors[1]),
             ),
           ],
         ),
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(50.0),
           child: TextField(
+            controller: _searchBarController,
             decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: 'Search notes',
@@ -143,7 +151,9 @@ class _MyWidgetState extends State<ListOfNotes>
             onChanged: (String string) {
               if (_tabController.index == 0) {
                 displayContainingNotes(string);
-              } else {}
+              } else {
+                displayContainingToDoLists(string);
+              }
             },
           ),
         ),
@@ -152,7 +162,13 @@ class _MyWidgetState extends State<ListOfNotes>
             IconButton(
                 icon: Icon(Icons.delete),
                 padding: EdgeInsets.all(2.0),
-                onPressed: () => deleteSelectedNotes()),
+                onPressed: () {
+                  if (_tabController.index == 0) {
+                    deleteSelectedNotes();
+                  } else {
+                    deleteSelectedToDoLists();
+                  }
+                }),
         ],
         backgroundColor: Colors.yellow,
       ),
@@ -171,14 +187,14 @@ class _MyWidgetState extends State<ListOfNotes>
                   title: Text(noteTitle[index]),
                   subtitle: Text(noteContent[index]),
                   onLongPress: () {
-                    toggleSelection(index);
+                    toggleNoteSelection(index);
                     toggleActions();
                   },
                   onTap: () {
                     _editNote(context, index);
                   },
-                  selected: isSelected[index],
-                  tileColor: tileColor[index],
+                  selected: isNoteSelected[index],
+                  tileColor: noteTileColor[index],
                   enabled: true);
             }),
         ListView.separated(
@@ -189,6 +205,8 @@ class _MyWidgetState extends State<ListOfNotes>
             final currentList = toDoLists[index];
             return ListTile(
               title: Text(toDoLists[index].title),
+              selected: isToDoListSelected[index],
+              tileColor: toDoListTileColor[index],
               subtitle: currentList != null
                   ? ListView.builder(
                       shrinkWrap:
@@ -206,6 +224,10 @@ class _MyWidgetState extends State<ListOfNotes>
                       },
                     )
                   : const SizedBox(), // Handle null case for currentList
+              onLongPress: () {
+                toggleToDoListsSelection(index);
+                toggleActions();
+              },
               onTap: () {},
               enabled: true,
             );
@@ -288,6 +310,51 @@ class _MyWidgetState extends State<ListOfNotes>
 
     setState(() {
       toDoLists.add(ToDoList(title: title, points: points));
+      isToDoListSelected.add(false);
+      toDoListTileColor.add(Colors.white);
+      originalToDoLits.add(ToDoList(title: title, points: points));
+    });
+  }
+
+  Future<void> deleteSelectedToDoLists() async {
+    final database = await DatabaseProvider.database;
+
+    List<int> indicesToDelete = [];
+
+    for (int i = 0; i < isToDoListSelected.length; i++) {
+      if (isToDoListSelected[i] == true) {
+        // Delete ToDoList and its points from the database.
+        await database.transaction((txn) async {
+          await txn.delete(
+            'ToDoLists',
+            where: 'id = ?',
+            whereArgs: [i + 1], // ToDoList IDs start from 1
+          );
+
+          await txn.delete(
+            'Points',
+            where: 'toDoListId = ?',
+            whereArgs: [i + 1],
+          );
+        });
+
+        indicesToDelete.add(i);
+      }
+    }
+
+    setState(() {
+      // Reverse iteration to avoid index issues
+      for (int i = indicesToDelete.length - 1; i >= 0; i--) {
+        int index = indicesToDelete[i];
+
+        toDoLists.removeAt(index);
+        isToDoListSelected.removeAt(index);
+        toDoListTileColor.removeAt(index);
+        originalToDoLits.removeAt(index);
+      }
+
+      // Reset actions enabled state
+      appBarActionsEnabled = false;
     });
   }
 
@@ -297,6 +364,9 @@ class _MyWidgetState extends State<ListOfNotes>
       iconColors = [Colors.black, Colors.black];
       // Update the color of the tapped icon
       iconColors[tabIndex] = Colors.red;
+      //Empty the search bar and disable trashbin on changing tabs
+      _searchBarController.text = '';
+      appBarActionsEnabled = false;
     });
   }
 
@@ -326,8 +396,8 @@ class _MyWidgetState extends State<ListOfNotes>
 
     List<int> indicesToDelete = [];
     // Remove the Note from the database.
-    for (int i = 0; i < isSelected.length; i++) {
-      if (isSelected[i] == true) {
+    for (int i = 0; i < isNoteSelected.length; i++) {
+      if (isNoteSelected[i] == true) {
         await database.delete(
           'Notes',
           // Use a `where` clause to delete a specific note.
@@ -349,27 +419,40 @@ class _MyWidgetState extends State<ListOfNotes>
         noteContent.removeAt(index);
         originalNoteTitle.removeAt(index);
         originalNoteContent.removeAt(index);
-        isSelected.removeAt(index);
-        tileColor.removeAt(index);
+        isNoteSelected.removeAt(index);
+        noteTileColor.removeAt(index);
       }
     });
   }
 
-  void toggleSelection(index) {
+  void toggleNoteSelection(index) {
     setState(() {
-      if (isSelected[index]) {
-        tileColor[index] = Colors.white;
-        isSelected[index] = false;
+      if (isNoteSelected[index]) {
+        noteTileColor[index] = Colors.white;
+        isNoteSelected[index] = false;
       } else {
-        tileColor[index] = Colors.grey.shade300;
-        isSelected[index] = true;
+        noteTileColor[index] = Colors.grey.shade300;
+        isNoteSelected[index] = true;
+      }
+    });
+  }
+
+  void toggleToDoListsSelection(index) {
+    setState(() {
+      if (isToDoListSelected[index]) {
+        toDoListTileColor[index] = Colors.white;
+        isToDoListSelected[index] = false;
+      } else {
+        toDoListTileColor[index] = Colors.grey.shade300;
+        isToDoListSelected[index] = true;
       }
     });
   }
 
   void toggleActions() {
     setState(() {
-      if (isSelected.any((isTrue) => isTrue == true)) {
+      if (isNoteSelected.any((isTrue) => isTrue == true) ||
+          isToDoListSelected.any((isTrue) => isTrue == true)) {
         appBarActionsEnabled = true;
       } else {
         appBarActionsEnabled = false;
@@ -426,7 +509,16 @@ class _MyWidgetState extends State<ListOfNotes>
       }).toList();
 
       toDoLists.add(ToDoList(title: toDoListMap['title'], points: points));
+      originalToDoLits
+          .add(ToDoList(title: toDoListMap['title'], points: points));
     }
+
+    setState(() {
+      isNoteSelected =
+          List<bool>.filled(toDoLists.length, false, growable: true);
+      noteTileColor =
+          List<Color>.filled(toDoLists.length, Colors.white, growable: true);
+    });
   }
 
   Future<void> _retrieveNotes() async {
@@ -447,6 +539,11 @@ class _MyWidgetState extends State<ListOfNotes>
       noteContent = List<String>.from(tempNoteContentWait);
       originalNoteTitle = List<String>.from(tempNoteTitleWait);
       originalNoteContent = List<String>.from(tempNoteContentWait);
+
+      isNoteSelected =
+          List<bool>.filled(noteTitle.length, false, growable: true);
+      noteTileColor =
+          List<Color>.filled(noteTitle.length, Colors.white, growable: true);
     });
   }
 
@@ -479,8 +576,8 @@ class _MyWidgetState extends State<ListOfNotes>
           noteContent.add(result['subtitle']);
           originalNoteTitle.add(result['title']);
           originalNoteContent.add(result['subtitle']);
-          isSelected.add(false);
-          tileColor.add(Colors.white);
+          isNoteSelected.add(false);
+          noteTileColor.add(Colors.white);
         });
       }
     }
@@ -500,6 +597,29 @@ class _MyWidgetState extends State<ListOfNotes>
       mapNote,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  void displayContainingToDoLists(String string) {
+    List<ToDoList> toDoListsContaining = [];
+
+    for (var i = 0; i < originalToDoLits.length; i++) {
+      ToDoList currentList = originalToDoLits[i];
+
+      // Check if the title contains the string
+      bool titleContains = currentList.title.contains(string);
+
+      // Check if any point's content contains the string
+      bool pointsContain =
+          currentList.points.any((point) => point.content.contains(string));
+
+      if (titleContains || pointsContain) {
+        toDoListsContaining.add(currentList);
+      }
+    }
+
+    setState(() {
+      toDoLists = toDoListsContaining;
+    });
   }
 
   void displayContainingNotes(String string) {

@@ -1,4 +1,5 @@
 //Seperate CheckBoxLabel to CheckBoxLabelTree and CheckboxLabel
+//Use CheckBoxLabel to build ToDoLists
 //Add focus to new row upon creation, keyboard doesn't appear, it may have something to do with textInputAction: TextInputAction.next,
 
 import 'package:flutter/material.dart';
