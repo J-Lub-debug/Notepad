@@ -1,4 +1,8 @@
-//Make tabs only clickable by Icons or other way around
+//Add editing toDoLists use CheckboxLabel with construstor
+//Add crosing out the row and greying it out when checked
+//Add modification date on Notes
+//Add rich text feature while writing Note
+//Add different sorting for Notes
 //Add sync with google Chrome or Dropbox
 
 import 'package:flutter/material.dart';
@@ -53,13 +57,13 @@ class ListPoint {
   final String content;
   final bool isChecked;
 
-  const ListPoint({required this.content, required this.isChecked});
+  ListPoint({required this.content, required this.isChecked});
 }
 
 class ToDoList {
   final String title;
   final List<ListPoint> points;
-  const ToDoList({this.title = '', required this.points});
+  ToDoList({this.title = '', required this.points});
 }
 
 class ListOfNotes extends StatefulWidget {
@@ -228,7 +232,9 @@ class _MyWidgetState extends State<ListOfNotes>
                 toggleToDoListsSelection(index);
                 toggleActions();
               },
-              onTap: () {},
+              onTap: () {
+                _showDialogBox(context, index);
+              },
               enabled: true,
             );
           },
@@ -247,21 +253,39 @@ class _MyWidgetState extends State<ListOfNotes>
     );
   }
 
-  Future<void> _showDialogBox(BuildContext context) async {
+  Future<void> _showDialogBox(BuildContext context, [index]) async {
+    List<Point> points = [];
+    String title = '';
+    if (index != null) {
+      toDoLists[index].points.forEach((element) {
+        points.add(Point(
+            checked: element.isChecked,
+            textController: TextEditingController(text: element.content)));
+      });
+      title = toDoLists[index].title;
+    }
     CheckboxLabel checkboxLabel;
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const TextField(
+          title: TextFormField(
             decoration: InputDecoration(hintText: 'Title'),
+            initialValue: title,
+            onChanged: (value) {
+              // Update the title when the text changes
+              title = value;
+            },
           ),
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                checkboxLabel =
-                    CheckboxLabel(checked: false, label: '', editable: true)
+                checkboxLabel = CheckboxLabel(
+                    checked: false,
+                    label: title,
+                    editable: true,
+                    points: points)
               ],
             ),
           ),
@@ -269,7 +293,11 @@ class _MyWidgetState extends State<ListOfNotes>
             TextButton(
               child: const Text('Approve'),
               onPressed: () {
-                _addToDo(checkboxLabel);
+                if (index == null) {
+                  _addToDo(checkboxLabel, title);
+                } else {
+                  _updateToDo(checkboxLabel, index, title);
+                }
                 Navigator.of(context).pop();
               },
             ),
@@ -279,8 +307,56 @@ class _MyWidgetState extends State<ListOfNotes>
     );
   }
 
-  Future<void> _addToDo(CheckboxLabel checkboxLabel) async {
-    var title = checkboxLabel.label;
+  Future<void> _updateToDo(
+      CheckboxLabel checkboxLabel, int index, String checkboxTitle) async {
+    String title = checkboxTitle;
+    List<String> pointsContent = [];
+    List<bool> isChecked = [];
+
+    for (Point point in checkboxLabel.points) {
+      String text = point.textController.text;
+      bool checked = point.checked;
+      pointsContent.add(text);
+      isChecked.add(checked);
+    }
+
+    List<ListPoint> points = [];
+    for (int i = 0; i < pointsContent.length; i++) {
+      points.add(ListPoint(content: pointsContent[i], isChecked: isChecked[i]));
+    }
+
+    final Database database = await DatabaseProvider.database;
+
+    await database.transaction((txn) async {
+      // Delete existing points for the specified ToDoList
+      await txn
+          .delete('Points', where: 'toDoListId = ?', whereArgs: [index + 1]);
+
+      // Insert the updated list of points
+      for (int i = 0; i < points.length; i++) {
+        await txn.insert('Points', {
+          'content': points[i].content,
+          'isChecked': points[i].isChecked ? 1 : 0,
+          'toDoListId': index + 1,
+        });
+      }
+
+      // Update the title of the ToDoList
+      await txn.update(
+        'ToDoLists',
+        {'title': title},
+        where: 'id = ?',
+        whereArgs: [index + 1],
+      );
+    });
+    setState(() {
+      toDoLists[index] = ToDoList(title: title, points: points);
+      originalToDoLits[index] = ToDoList(title: title, points: points);
+    });
+  }
+
+  Future<void> _addToDo(CheckboxLabel checkboxLabel, checkboxTitle) async {
+    String title = checkboxTitle;
     List<String> pointsContent = [];
     List<bool> isChecked = [];
 

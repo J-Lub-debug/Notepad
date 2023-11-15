@@ -1,3 +1,5 @@
+//Add crosing out the row and greying it out when checked
+//Add checkbox next to title and make it cross out all when checked
 //Seperate CheckBoxLabel to CheckBoxLabelTree and CheckboxLabel
 //Use CheckBoxLabel to build ToDoLists
 //Add focus to new row upon creation, keyboard doesn't appear, it may have something to do with textInputAction: TextInputAction.next,
@@ -5,13 +7,11 @@
 import 'package:flutter/material.dart';
 
 class Point {
-  int id;
   bool checked;
   FocusNode focusNode;
   TextEditingController textController;
 
   Point({
-    required this.id,
     required this.checked,
     FocusNode? focusNode,
     TextEditingController? textController,
@@ -34,7 +34,9 @@ class CheckboxLabel extends StatefulWidget {
     required this.label,
     required this.editable,
     List<Point>? points,
-  })  : points = points ?? [Point(id: 0, checked: false)],
+  })  : points = points != null && points.isNotEmpty
+            ? points
+            : [Point(checked: false)],
         super(key: key);
 
   @override
@@ -85,7 +87,7 @@ class _CheckboxLabelState extends State<CheckboxLabel> {
 
   void _onSubmitted(index) {
     setState(() {
-      widget.points.add(Point(id: index, checked: false));
+      widget.points.add(Point(checked: false));
     });
     // Set focus to the new TextField
     FocusScope.of(context).requestFocus(widget.points.last.focusNode);
