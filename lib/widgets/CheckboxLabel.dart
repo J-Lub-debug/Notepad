@@ -23,7 +23,7 @@ class Point {
 }
 
 class CheckboxLabel extends StatefulWidget {
-  bool? checked;
+  bool checked;
   String label;
   bool editable;
   List<Point> points;
@@ -63,6 +63,13 @@ class _CheckboxLabelState extends State<CheckboxLabel> {
                       controller: widget.points[index].textController,
                       keyboardType: TextInputType.multiline,
                       focusNode: widget.points[index].focusNode,
+                      style: TextStyle(
+                          color: widget.points[index].checked
+                              ? Colors.grey
+                              : Colors.black,
+                          decoration: widget.points[index].checked
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none),
                       textInputAction: TextInputAction.next,
                       onSubmitted: (value) =>
                           _onSubmitted(index + 1), //if the first point has id:0
@@ -75,13 +82,18 @@ class _CheckboxLabelState extends State<CheckboxLabel> {
         : Row(children: [
             Checkbox(
               value: widget.checked,
-              onChanged: (val) {
+              onChanged: (bool? val) {
                 setState(() {
-                  widget.checked = val;
+                  widget.checked = val ?? false;
                 });
               },
             ),
-            Text(widget.label)
+            Text(widget.label,
+                style: TextStyle(
+                    color: widget.checked ? Colors.grey : Colors.black,
+                    decoration: widget.checked
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none))
           ]);
   }
 

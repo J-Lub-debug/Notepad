@@ -1,4 +1,3 @@
-//Add editing toDoLists use CheckboxLabel with construstor
 //Add crosing out the row and greying it out when checked
 //Add modification date on Notes
 //Add rich text feature while writing Note
@@ -220,7 +219,7 @@ class _MyWidgetState extends State<ListOfNotes>
                         final currentItem = currentList.points[i].content;
                         return ListTile(
                           title: CheckboxLabel(
-                            checked: false,
+                            checked: currentList.points[i].isChecked,
                             label: currentItem,
                             editable: false,
                           ),
