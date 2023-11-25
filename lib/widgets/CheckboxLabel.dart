@@ -1,7 +1,5 @@
 //Add crosing out the row and greying it out when checked
 //Add checkbox next to title and make it cross out all when checked
-//Seperate CheckBoxLabel to CheckBoxLabelTree and CheckboxLabel
-//Use CheckBoxLabel to build ToDoLists
 //Add focus to new row upon creation, keyboard doesn't appear, it may have something to do with textInputAction: TextInputAction.next,
 
 import 'package:flutter/material.dart';
@@ -23,17 +21,15 @@ class Point {
 }
 
 class CheckboxLabel extends StatefulWidget {
-  bool checked;
-  String label;
   bool editable;
   List<Point> points;
+  final Function(CheckboxLabel) onPointsUpdated; //callback function
 
   CheckboxLabel({
     Key? key,
-    required this.checked,
-    required this.label,
     required this.editable,
     List<Point>? points,
+    required this.onPointsUpdated,
   })  : points = points != null && points.isNotEmpty
             ? points
             : [Point(checked: false)],
@@ -41,60 +37,56 @@ class CheckboxLabel extends StatefulWidget {
 
   @override
   State<CheckboxLabel> createState() => _CheckboxLabelState();
+
+  // New method to handle points update
+  void updateWidget(CheckboxLabel updatedWidget) {
+    // Call the callback from _MyWidgetState directly
+    onPointsUpdated(updatedWidget);
+  }
 }
 
 class _CheckboxLabelState extends State<CheckboxLabel> {
   @override
   Widget build(BuildContext context) {
-    return widget.editable
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                for (int index = 0; index < widget.points.length; index++)
-                  ListTile(
-                    leading: Checkbox(
-                      value: widget.points[index].checked,
-                      onChanged: (val) {
-                        setState(() => widget.points[index].checked = val!);
-                      },
-                    ),
-                    title: TextField(
-                      //enabled: false,
-                      controller: widget.points[index].textController,
-                      keyboardType: TextInputType.multiline,
-                      focusNode: widget.points[index].focusNode,
-                      style: TextStyle(
-                          color: widget.points[index].checked
-                              ? Colors.grey
-                              : Colors.black,
-                          decoration: widget.points[index].checked
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none),
-                      textInputAction: TextInputAction.next,
-                      onSubmitted: (value) =>
-                          _onSubmitted(index + 1), //if the first point has id:0
-                      onChanged: (value) => _onEmptyDelete(index, value),
-                    ),
-                  ),
-              ],
-            ),
-          )
-        : Row(children: [
-            Checkbox(
-              value: widget.checked,
-              onChanged: (bool? val) {
-                setState(() {
-                  widget.checked = val ?? false;
-                });
-              },
-            ),
-            Text(widget.label,
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          for (int index = 0; index < widget.points.length; index++)
+            ListTile(
+              leading: Checkbox(
+                value: widget.points[index].checked,
+                onChanged: (val) {
+                  setState(() {
+                    widget.points[index].checked = val!;
+                  });
+                  widget.onPointsUpdated(widget);
+                },
+              ),
+              title: TextField(
+                enabled: widget.editable,
+                controller: widget.points[index].textController,
+                keyboardType: TextInputType.multiline,
+                focusNode: widget.points[index].focusNode,
                 style: TextStyle(
-                    color: widget.checked ? Colors.grey : Colors.black,
-                    decoration: widget.checked
+                    color: widget.points[index].checked
+                        ? Colors.grey
+                        : Colors.black,
+                    decoration: widget.points[index].checked
                         ? TextDecoration.lineThrough
-                        : TextDecoration.none))
-          ]);
+                        : TextDecoration.none),
+                decoration: InputDecoration(
+                    border: widget.editable
+                        ? const UnderlineInputBorder()
+                        : InputBorder.none),
+                textInputAction: TextInputAction.next,
+                onSubmitted: (value) =>
+                    _onSubmitted(index + 1), //if the first point has id:0
+                onChanged: (value) => _onEmptyDelete(index, value),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   void _onSubmitted(index) {

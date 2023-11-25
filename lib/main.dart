@@ -211,19 +211,17 @@ class _MyWidgetState extends State<ListOfNotes>
               selected: isToDoListSelected[index],
               tileColor: toDoListTileColor[index],
               subtitle: currentList != null
-                  ? ListView.builder(
-                      shrinkWrap:
-                          true, // Ensure the inner ListView takes only the space it needs
-                      itemCount: currentList.points.length,
-                      itemBuilder: (context, i) {
-                        final currentItem = currentList.points[i].content;
-                        return ListTile(
-                          title: CheckboxLabel(
-                            checked: currentList.points[i].isChecked,
-                            label: currentItem,
-                            editable: false,
-                          ),
-                        );
+                  ? CheckboxLabel(
+                      editable: false,
+                      points: currentList.points
+                          .map((listPoint) => Point(
+                              checked: listPoint.isChecked,
+                              textController: TextEditingController(
+                                  text: listPoint.content)))
+                          .toList(),
+                      onPointsUpdated: (updatedWidget) {
+                        _updateToDo(
+                            updatedWidget, index, toDoLists[index].title);
                       },
                     )
                   : const SizedBox(), // Handle null case for currentList
@@ -281,10 +279,12 @@ class _MyWidgetState extends State<ListOfNotes>
             child: ListBody(
               children: <Widget>[
                 checkboxLabel = CheckboxLabel(
-                    checked: false,
-                    label: title,
-                    editable: true,
-                    points: points)
+                  editable: true,
+                  points: points,
+                  onPointsUpdated: (updatedWidget) {
+                    //empty
+                  },
+                )
               ],
             ),
           ),
