@@ -115,20 +115,8 @@ class _MyWidgetState extends State<ListOfNotes>
         title: TabBar(
           controller: _tabController,
           onTap: (index) {
-            // Handle tab selection
             _tabController.animateTo(index);
-            setState(() {
-              isNoteSelected =
-                  List<bool>.filled(noteTitle.length, false, growable: true);
-              noteTileColor = List<Color>.filled(noteTitle.length, Colors.white,
-                  growable: true);
-              isToDoListSelected =
-                  List<bool>.filled(toDoLists.length, false, growable: true);
-              toDoListTileColor = List<Color>.filled(
-                  toDoLists.length, Colors.white,
-                  growable: true);
-              updateIconColor(index);
-            });
+            //setTabColorResetSelection(index);
           },
           tabs: [
             Padding(
@@ -248,6 +236,20 @@ class _MyWidgetState extends State<ListOfNotes>
         },
       ),
     );
+  }
+
+  void setTabColorResetSelection(int index) {
+    setState(() {
+      isNoteSelected =
+          List<bool>.filled(noteTitle.length, false, growable: true);
+      noteTileColor =
+          List<Color>.filled(noteTitle.length, Colors.white, growable: true);
+      isToDoListSelected =
+          List<bool>.filled(toDoLists.length, false, growable: true);
+      toDoListTileColor =
+          List<Color>.filled(toDoLists.length, Colors.white, growable: true);
+      updateIconColor(index);
+    });
   }
 
   Future<void> _showDialogBox(BuildContext context, [index]) async {
@@ -538,7 +540,7 @@ class _MyWidgetState extends State<ListOfNotes>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(vsync: this, length: 2);
+    _initializeTabs();
     _initializeNotes();
     _initializeToDoLists();
   }
@@ -547,6 +549,15 @@ class _MyWidgetState extends State<ListOfNotes>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _initializeTabs() {
+    print('0');
+    _tabController = TabController(vsync: this, length: 2);
+    _tabController.addListener(() {
+      setTabColorResetSelection(_tabController.index);
+      print("0");
+    });
   }
 
   Future<void> _initializeNotes() async {
